@@ -15,3 +15,14 @@ Werkzeug==3.0.3
 # These are not pip-installable but are required system dependencies
 # ffmpeg         # ensure FFmpeg is installed on the system
 # parallel       # ensure GNU parallel is installed
+
+torch>=2.0.0
+torchaudio>=2.0.0
+numpy>=1.21.0
+librosa>=0.10.0
+crepe>=0.0.12
+diffusers>=0.21.0
+accelerate>=0.20.0
+wandb>=0.15.0
+omegaconf>=2.3.0
+einops>=0.6.0
