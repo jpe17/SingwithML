@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SingWithML - Karaoke</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            overflow: hidden;
+        }
+        .container { height: 100vh; display: flex; flex-direction: column; }
+        .header { text-align: center; padding: 15px; background: rgba(0, 0, 0, 0.4); border-bottom: 2px solid #00d4ff; backdrop-filter: blur(10px); z-index: 20; }
+        .header h1 { font-size: 2.2em; text-shadow: 0 0 20px rgba(0, 212, 255, 0.5); color: #00d4ff; margin-bottom: 8px; font-weight: 300; }
+        .song-title { font-size: 1.3em; color: #ffffff; margin-bottom: 15px; min-height: 30px; font-weight: 500; }
+        .controls { display: flex; justify-content: center; gap: 15px; }
+        .btn { padding: 10px 20px; font-size: 1em; border: none; border-radius: 30px; cursor: pointer; transition: all 0.3s ease; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn:disabled { background: #555; cursor: not-allowed; }
+        .btn-primary { background: linear-gradient(45deg, #00d4ff, #0099cc); color: white; }
+        .btn-danger { background: linear-gradient(45deg, #ff3366, #cc1a4d); color: white; }
+        .karaoke-area { flex: 1; position: relative; overflow: hidden; }
+        .pitch-display { height: 100%; position: relative; }
+        .note-track { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2; }
+        .note { position: absolute; height: 10px; border-radius: 5px; color: white; transition: all 0.1s; z-index: 3; border: 1px solid rgba(0,0,0,0.5); }
+        .note.active { transform: scale(1.1); box-shadow: 0 0 15px #00ff88; border: 1px solid #00ff88; }
+        .singing-line { position: absolute; left: 20%; top: 0; bottom: 0; width: 4px; background: #00d4ff; z-index: 5; box-shadow: 0 0 15px #00d4ff; }
+        .progress-info { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px; }
+        .status { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px; }
+        .note-c { background-color: #ff6b6b; } .note-cs { background-color: #ff8b5a; } .note-d { background-color: #ffac5a; } .note-ds { background-color: #ffd05a; }
+        .note-e { background-color: #ffff5a; } .note-f { background-color: #d0ff5a; } .note-fs { background-color: #a0ff5a; } .note-g { background-color: #70ff5a; }
+        .note-gs { background-color: #5aff8b; } .note-a { background-color: #5ad0ff; } .note-as { background-color: #5a8bff; } .note-b { background-color: #705aff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 SingWithML</h1>
+            <div class="song-title" id="songTitle">Loading...</div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="loadRandomSong()">🎵 New Song</button>
+                <button class="btn btn-primary" id="playBtn" onclick="togglePlayback()">▶️ Play</button>
+            </div>
+        </div>
+        <div class="karaoke-area">
+            <div class="pitch-display" id="pitchDisplay"><div class="note-track" id="noteTrack"></div><div class="singing-line"></div></div>
+            <div class="progress-info" id="progressInfo">00:00 / 00:00</div>
+        </div>
+        <audio id="audioPlayer" style="display: none;"></audio>
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        // --- Global State & Constants ---
+        let notes = [];
+        let animationFrame = null;
+        const audioPlayer = document.getElementById('audioPlayer');
+        const NOTE_LOOKAHEAD_TIME = 0.1; // (seconds) How far ahead to schedule notes
+        const NOTE_SCHEDULE_INTERVAL = 25; // (ms) How often to check for upcoming notes
+
+        const noteColors = {
+            'C':'note-c', 'C#':'note-cs', 'D':'note-d', 'D#':'note-ds', 'E':'note-e',
+            'F':'note-f', 'F#':'note-fs', 'G':'note-g', 'G#':'note-gs', 'A':'note-a',
+            'A#':'note-as', 'B':'note-b'
+        };
+
+        // --- Web Audio API Setup ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioContext;
+        let noteQueue = []; // For notes that need to be played
+        let nextNoteTime = 0.0;
+
+        function initAudioContext() {
+            if (!audioContext) {
+                try {
+                    audioContext = new AudioContext();
+                    console.log("AudioContext created successfully.");
+                } catch (e) {
+                    setStatus("Web Audio API is not supported in this browser.");
+                    console.error("Could not create AudioContext", e);
+                }
+            }
+        }
+
+        // --- Core Functions ---
+
+        function loadRandomSong() {
+            stopPlayback();
+            setStatus('Loading new song...');
+            document.getElementById('playBtn').disabled = true;
+            
+            fetch('/api/random_song')
+                .then(response => {
+                    if (!response.ok) return response.text().then(text => { throw new Error(text || `Server error: ${response.statusText}`) });
+                    return response.json();
+                })
+                .then(data => {
+                    notes = data.notes;
+                    document.getElementById('songTitle').textContent = data.song_name;
+                    audioPlayer.src = data.instrumental_url;
+                    document.getElementById('playBtn').disabled = false;
+                    setStatus('Song loaded. Ready to play!');
+                })
+                .catch(error => {
+                    console.error('Error loading song:', error);
+                    setStatus(`Error: ${error.message}`);
+                });
+        }
+
+        function togglePlayback() {
+            initAudioContext(); // Ensure audio is ready, especially on first click
+            if (audioPlayer.paused) {
+                play();
+            } else {
+                pause();
+            }
+        }
+        
+        function play() {
+            audioPlayer.play().then(() => {
+                setStatus('Playing...');
+                document.getElementById('playBtn').textContent = '⏸️ Pause';
+                startScheduler();
+                startAnimation();
+            }).catch(e => setStatus(`Playback error: ${e.message}`));
+        }
+
+        function pause() {
+            audioPlayer.pause();
+            setStatus('Paused');
+            document.getElementById('playBtn').textContent = '▶️ Play';
+            stopSchedulerAndAnimation();
+        }
+
+        function stopPlayback() {
+            pause();
+            audioPlayer.currentTime = 0;
+        }
+
+        // --- Note Scheduler & Player (Web Audio API) ---
+
+        function startScheduler() {
+            noteQueue = [...notes].sort((a, b) => a.start_time - b.start_time);
+            nextNoteTime = 0.0;
+            
+            // This is our high-resolution scheduler loop
+            animationFrame = setInterval(() => {
+                const currentTime = audioPlayer.currentTime;
+                while (noteQueue.length > 0 && noteQueue[0].start_time < currentTime + NOTE_LOOKAHEAD_TIME) {
+                    const note = noteQueue.shift();
+                    playNoteSound(note, audioContext.currentTime + (note.start_time - currentTime));
+                }
+            }, NOTE_SCHEDULE_INTERVAL);
+        }
+
+        function playNoteSound(note, scheduledTime) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+
+            osc.type = 'triangle';
+            osc.frequency.value = 440 * Math.pow(2, (note.midi_note - 69) / 12);
+            
+            const volume = 0.3;
+            gain.gain.setValueAtTime(volume, scheduledTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, scheduledTime + note.duration);
+            
+            osc.start(scheduledTime);
+            osc.stop(scheduledTime + note.duration);
+        }
+
+        function stopSchedulerAndAnimation() {
+            if (animationFrame) {
+                clearInterval(animationFrame); // Use clearInterval for the scheduler
+                animationFrame = null;
+            }
+        }
+
+        // --- Visual Animation Engine ---
+
+        function startAnimation() {
+            const noteTrack = document.getElementById('noteTrack');
+            const displayWidth = window.innerWidth;
+            const singLineX = displayWidth * 0.20;
+            const pixelsPerSecond = displayWidth * 0.2; // Note speed
+
+            const allMidiNotes = notes.map(n => n.midi_note);
+            const minNote = Math.min(...allMidiNotes);
+            const maxNote = Math.max(...allMidiNotes);
+            const noteRange = Math.max(maxNote - minNote, 24); // Min 2 octaves
+
+            function animate() {
+                if (audioPlayer.paused) return; // Stop animation if paused
+
+                const currentTime = audioPlayer.currentTime;
+                noteTrack.innerHTML = ''; // Efficiently redraw all visible notes
+
+                notes.forEach(note => {
+                    const noteStartTime = note.start_time;
+                    const noteEndTime = noteStartTime + note.duration;
+
+                    // Conditions for rendering a note
+                    const isNoteActive = (noteStartTime < currentTime) && (noteEndTime > currentTime);
+                    const isNoteUpcoming = (noteStartTime >= currentTime) && (noteStartTime < currentTime + (displayWidth / pixelsPerSecond));
+
+                    if (isNoteActive || isNoteUpcoming) {
+                        const noteElement = document.createElement('div');
+                        const topPercent = 100 - ((note.midi_note - minNote) / noteRange) * 100;
+                        const noteX = singLineX + (noteStartTime - currentTime) * pixelsPerSecond;
+                        const noteWidth = note.duration * pixelsPerSecond;
+                        
+                        noteElement.className = 'note';
+                        noteElement.style.left = `${noteX}px`;
+                        noteElement.style.width = `${noteWidth}px`;
+                        noteElement.style.top = `${topPercent}%`;
+                        
+                        const noteName = note.note_name.replace(/\d/, '');
+                        noteElement.classList.add(noteColors[noteName] || 'note-c');
+                        if (isNoteActive) noteElement.classList.add('active');
+
+                        noteTrack.appendChild(noteElement);
+                    }
+                });
+                
+                document.getElementById('progressInfo').textContent = 
+                    `${formatTime(currentTime)} / ${formatTime(audioPlayer.duration || 0)}`;
+
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+        
+        function formatTime(s) { return `${Math.floor(s/60)}`.padStart(2,'0') + ':' + `${Math.floor(s%60)}`.padStart(2,'0'); }
+        function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+        // --- Event Listeners ---
+        audioPlayer.addEventListener('ended', stopPlayback);
+        audioPlayer.addEventListener('error', () => setStatus('Error loading audio file.'));
+        window.addEventListener('load', loadRandomSong);
+    </script>
+</body>
+</html> 

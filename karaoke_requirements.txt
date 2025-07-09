@@ -1,0 +1,5 @@
+Flask==2.3.3
+pandas==2.0.3
+pygame==2.6.1
+pretty_midi==0.2.10
+pathlib 
