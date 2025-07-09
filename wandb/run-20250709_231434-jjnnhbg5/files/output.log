@@ -1,1 +1,11 @@
-Epoch 1:   0%|                                                                                                        | 0/3 [00:00<?, ?it/s]
+Epoch 1:   0%|                                                                                                        | 0/3 [04:42<?, ?it/s]
+Traceback (most recent call last):
+  File "msldm_voice2instrumental/train.py", line 271, in <module>
+    main()
+  File "msldm_voice2instrumental/train.py", line 268, in main
+    trainer.train()
+  File "msldm_voice2instrumental/train.py", line 207, in train
+    vae_metrics = self.train_vae_step(batch)
+  File "msldm_voice2instrumental/train.py", line 110, in train_vae_step
+    recon_loss = F.mse_loss(recon, instrumental)
+NameError: name 'F' is not defined

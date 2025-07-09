@@ -7,3 +7,4 @@
 05_add_noise
 venv
 .python-version
+wandb

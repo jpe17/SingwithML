@@ -95,29 +95,36 @@ class MSLDMInference:
         
         return x
     
-    def generate_instrumental(self, vocal_path: str, output_path: str):
-        """Generate instrumental from vocal"""
-        # Load and preprocess vocal
-        vocal = self.preprocessor.load_and_preprocess(vocal_path)
-        vocal = vocal.unsqueeze(0).to(self.device)  # Add batch dimension
-        
-        # Extract CREPE features
-        pitch_features = self.preprocessor.extract_crepe_features(vocal.squeeze(0))
-        pitch_features = pitch_features.unsqueeze(0).to(self.device)
-        
-        # Generate latent
-        latent_shape = (1, self.model_config.vae_latent_dim, vocal.shape[-1] // 8)  # Assuming 8x compression
-        latent = self.ddpm_sample(latent_shape, pitch_features)
-        
-        # Decode to audio
-        with torch.no_grad():
-            instrumental = self.vae.decode(latent)
-        
-        # Save output
-        instrumental = instrumental.squeeze(0).cpu()
-        torchaudio.save(output_path, instrumental, self.model_config.sample_rate)
-        
-        print(f"Generated instrumental saved to: {output_path}")
+def generate_instrumental(self, vocal_path: str, output_path: str, microphone_mode: bool = True):
+    """Generate instrumental from vocal"""
+    if microphone_mode:
+        # Simple enhanced preprocessing for microphone
+        vocal = self.preprocessor.preprocess_microphone_audio(vocal_path)
+        print("Applied simple microphone preprocessing")
+    else:
+        # Basic preprocessing for clean audio
+        vocal = self.preprocessor.load_and_preprocess(vocal_path, skip_preprocessing=False)
+        print("Applied basic preprocessing")
+    
+    vocal = vocal.unsqueeze(0).to(self.device)
+    
+    # Extract CREPE features
+    pitch_features = self.preprocessor.extract_crepe_features(vocal.squeeze(0))
+    pitch_features = pitch_features.unsqueeze(0).to(self.device)
+    
+    # Generate latent
+    latent_shape = (1, self.model_config.vae_latent_dim, vocal.shape[-1] // 8)
+    latent = self.ddmp_sample(latent_shape, pitch_features)
+    
+    # Decode to audio
+    with torch.no_grad():
+        instrumental = self.vae.decode(latent)
+    
+    # Save output
+    instrumental = instrumental.squeeze(0).cpu()
+    torchaudio.save(output_path, instrumental, self.model_config.sample_rate)
+    
+    print(f"Generated instrumental saved to: {output_path}")
 
 def main():
     parser = argparse.ArgumentParser(description='MSLDM Voice-to-Instrumental Inference')

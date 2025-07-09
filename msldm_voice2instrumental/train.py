@@ -6,6 +6,7 @@ import os
 import wandb
 from tqdm import tqdm
 import numpy as np
+import torch.nn.functional as F 
 
 from config import ModelConfig, DataConfig
 from data.dataset import VoiceInstrumentalDataset
@@ -60,13 +61,13 @@ class MSLDMTrainer:
             self.train_dataset, 
             batch_size=model_config.batch_size, 
             shuffle=True, 
-            num_workers=4
+            num_workers=0
         )
         self.val_loader = DataLoader(
             self.val_dataset, 
             batch_size=model_config.batch_size, 
             shuffle=False, 
-            num_workers=4
+            num_workers=0
         )
         
     def register_noise_schedule(self):

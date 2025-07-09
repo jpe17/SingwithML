@@ -58,26 +58,35 @@ class VoiceInstrumentalDataset(Dataset):
     def __getitem__(self, idx):
         vocal_path, instrumental_path = self.pairs[idx]
         
+        print(f"Processing file {idx+1}/{len(self.pairs)}: {os.path.basename(vocal_path)}")
+        
         # Load and preprocess audio
+        print("  Loading vocal...")
         vocal = self.preprocessor.load_and_preprocess(vocal_path)
+        print("  Loading instrumental...")
         instrumental = self.preprocessor.load_and_preprocess(instrumental_path)
         
         # Apply augmentations during training
         if self.split == 'train':
+            print("  Applying augmentations...")
             vocal = self.preprocessor.apply_augmentations(vocal)
             instrumental = self.preprocessor.apply_augmentations(instrumental)
         
         # Segment audio
+        print("  Segmenting audio...")
         vocal, instrumental = self._segment_audio(vocal, instrumental)
         
         # Extract CREPE features
+        print("  Extracting CREPE features...")
         pitch_features = self.preprocessor.extract_crepe_features(vocal)
+        print("  Done!")
         
         return {
             'vocal': vocal,
             'instrumental': instrumental,
             'pitch_features': pitch_features
         }
+
     
     def _segment_audio(self, vocal, instrumental):
         """Segment audio to fixed length"""

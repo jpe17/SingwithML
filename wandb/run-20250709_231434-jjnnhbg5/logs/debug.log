@@ -19,3 +19,4 @@ config: {'sample_rate': 44100, 'n_fft': 2048, 'hop_length': 512, 'win_length': 2
 2025-07-09 23:14:36,054 INFO    MainThread:18932 [wandb_run.py:_redirect():2375] Wrapping output streams.
 2025-07-09 23:14:36,054 INFO    MainThread:18932 [wandb_run.py:_redirect():2398] Redirects installed.
 2025-07-09 23:14:36,055 INFO    MainThread:18932 [wandb_init.py:init():1075] run started, returning control to user process
+2025-07-09 23:19:19,160 INFO    MsgRouterThr:18932 [mailbox.py:close():129] [no run ID] Closing mailbox, abandoning 1 handles.
