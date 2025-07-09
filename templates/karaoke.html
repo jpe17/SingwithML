@@ -5,33 +5,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SingWithML - Karaoke</title>
     <style>
+        /* --- SingStar Inspired UI Overhaul --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            background: #0f0c29;
+            background: linear-gradient(to right, #24243e, #302b63, #0f0c29);
             color: white;
             overflow: hidden;
         }
         .container { height: 100vh; display: flex; flex-direction: column; }
-        .header { text-align: center; padding: 15px; background: rgba(0, 0, 0, 0.4); border-bottom: 2px solid #00d4ff; backdrop-filter: blur(10px); z-index: 20; }
-        .header h1 { font-size: 2.2em; text-shadow: 0 0 20px rgba(0, 212, 255, 0.5); color: #00d4ff; margin-bottom: 8px; font-weight: 300; }
-        .song-title { font-size: 1.3em; color: #ffffff; margin-bottom: 15px; min-height: 30px; font-weight: 500; }
+        .header {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(100, 200, 255, 0.3);
+            backdrop-filter: blur(10px);
+            z-index: 20;
+        }
+        .header h1 {
+            font-size: 2em;
+            font-weight: 600;
+            color: #f0f0f0;
+            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #0073e6, 0 0 20px #0073e6;
+        }
+        .song-title { font-size: 1.2em; color: #c0d0ff; margin: 5px 0 10px 0; min-height: 24px; font-weight: 500; }
         .controls { display: flex; justify-content: center; gap: 15px; }
-        .btn { padding: 10px 20px; font-size: 1em; border: none; border-radius: 30px; cursor: pointer; transition: all 0.3s ease; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .btn:disabled { background: #555; cursor: not-allowed; }
-        .btn-primary { background: linear-gradient(45deg, #00d4ff, #0099cc); color: white; }
-        .btn-danger { background: linear-gradient(45deg, #ff3366, #cc1a4d); color: white; }
+        .btn {
+            padding: 8px 18px; font-size: 0.9em; border: 2px solid transparent; border-radius: 30px;
+            cursor: pointer; transition: all 0.3s ease; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            background-size: 200% auto;
+        }
+        .btn:disabled { background-image: none; background-color: #555; cursor: not-allowed; opacity: 0.6; }
+        .btn-primary { background-image: linear-gradient(to right, #00d2ff 0%, #3a7bd5 51%, #00d2ff 100%); border-color: #3a7bd5; color: white; }
+        .btn-primary:hover { background-position: right center; }
         .karaoke-area { flex: 1; position: relative; overflow: hidden; }
         .pitch-display { height: 100%; position: relative; }
         .note-track { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2; }
-        .note { position: absolute; height: 10px; border-radius: 5px; color: white; transition: all 0.1s; z-index: 3; border: 1px solid rgba(0,0,0,0.5); }
-        .note.active { transform: scale(1.1); box-shadow: 0 0 15px #00ff88; border: 1px solid #00ff88; }
-        .singing-line { position: absolute; left: 20%; top: 0; bottom: 0; width: 4px; background: #00d4ff; z-index: 5; box-shadow: 0 0 15px #00d4ff; }
-        .progress-info { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px; }
-        .status { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px; }
-        .note-c { background-color: #ff6b6b; } .note-cs { background-color: #ff8b5a; } .note-d { background-color: #ffac5a; } .note-ds { background-color: #ffd05a; }
-        .note-e { background-color: #ffff5a; } .note-f { background-color: #d0ff5a; } .note-fs { background-color: #a0ff5a; } .note-g { background-color: #70ff5a; }
-        .note-gs { background-color: #5aff8b; } .note-a { background-color: #5ad0ff; } .note-as { background-color: #5a8bff; } .note-b { background-color: #705aff; }
+        .note {
+            position: absolute;
+            height: 12px;
+            border-radius: 6px;
+            color: white;
+            transition: all 0.1s;
+            z-index: 3;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+            border: 1px solid rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        .note.active {
+            box-shadow: 0 0 10px #ffdd00, 0 0 20px #ff8c00;
+            transform: scale(1.1);
+            border: 1px solid #fff;
+            z-index: 4;
+        }
+        .singing-line {
+            position: absolute; left: 20%; top: 0; bottom: 0; width: 4px;
+            background: linear-gradient(to bottom, #ff48c4, #2bdfd7, #ff48c4);
+            background-size: 100% 300%;
+            z-index: 5;
+            box-shadow: 0 0 15px #2bdfd7;
+            animation: flow-gradient 4s ease-in-out infinite;
+        }
+        @keyframes flow-gradient {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 0% 100%; }
+            100% { background-position: 0% 0%; }
+        }
+        .ui-panel { position: absolute; background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 8px; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); }
+        .progress-info { top: 10px; left: 10px; }
+        .status { bottom: 10px; right: 10px; }
+        .score-display { top: 10px; right: 10px; color: #ffd700; font-size: 1.2em; font-weight: bold; }
+        .note-c { background: #e74c3c; } .note-cs { background: #d35400; } .note-d { background: #f39c12; }
+        .note-ds { background: #f1c40f; } .note-e { background: #2ecc71; } .note-f { background: #1abc9c; }
+        .note-fs { background: #16a085; } .note-g { background: #3498db; } .note-gs { background: #2980b9; }
+        .note-a { background: #9b59b6; } .note-as { background: #8e44ad; } .note-b { background: #c0392b; }
+        #star-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+        .particle { position: absolute; background: #ffd700; border-radius: 50%; z-index: 10; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -45,20 +100,26 @@
             </div>
         </div>
         <div class="karaoke-area">
-            <div class="pitch-display" id="pitchDisplay"><div class="note-track" id="noteTrack"></div><div class="singing-line"></div></div>
-            <div class="progress-info" id="progressInfo">00:00 / 00:00</div>
+            <canvas id="star-bg"></canvas>
+            <div class="pitch-display" id="pitchDisplay">
+                <div class="note-track" id="noteTrack"></div>
+                <div class="singing-line"></div>
+            </div>
+            <div class="ui-panel progress-info" id="progressInfo">00:00 / 00:00</div>
+            <div class="ui-panel score-display" id="scoreDisplay">Score: 0</div>
         </div>
         <audio id="audioPlayer" style="display: none;"></audio>
-        <div class="status" id="status"></div>
+        <div class="ui-panel status" id="status"></div>
     </div>
 
     <script>
         // --- Global State & Constants ---
         let notes = [];
-        let animationFrame = null;
+        let animationFrameId = null;
+        let schedulerIntervalId = null;
         const audioPlayer = document.getElementById('audioPlayer');
-        const NOTE_LOOKAHEAD_TIME = 0.1; // (seconds) How far ahead to schedule notes
-        const NOTE_SCHEDULE_INTERVAL = 25; // (ms) How often to check for upcoming notes
+        const NOTE_LOOKAHEAD_TIME = 0.2;
+        const NOTE_SCHEDULE_INTERVAL = 50;
 
         const noteColors = {
             'C':'note-c', 'C#':'note-cs', 'D':'note-d', 'D#':'note-ds', 'E':'note-e',
@@ -66,11 +127,13 @@
             'A#':'note-as', 'B':'note-b'
         };
 
+        // --- Game State ---
+        let score = 0;
+        let hitNotes = new Set();
+
         // --- Web Audio API Setup ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioContext;
-        let noteQueue = []; // For notes that need to be played
-        let nextNoteTime = 0.0;
 
         function initAudioContext() {
             if (!audioContext) {
@@ -79,13 +142,11 @@
                     console.log("AudioContext created successfully.");
                 } catch (e) {
                     setStatus("Web Audio API is not supported in this browser.");
-                    console.error("Could not create AudioContext", e);
                 }
             }
         }
 
         // --- Core Functions ---
-
         function loadRandomSong() {
             stopPlayback();
             setStatus('Loading new song...');
@@ -102,6 +163,7 @@
                     audioPlayer.src = data.instrumental_url;
                     document.getElementById('playBtn').disabled = false;
                     setStatus('Song loaded. Ready to play!');
+                    resetScore();
                 })
                 .catch(error => {
                     console.error('Error loading song:', error);
@@ -110,15 +172,16 @@
         }
 
         function togglePlayback() {
-            initAudioContext(); // Ensure audio is ready, especially on first click
-            if (audioPlayer.paused) {
-                play();
-            } else {
-                pause();
-            }
+            initAudioContext();
+            if (audioPlayer.paused) play();
+            else pause();
         }
         
         function play() {
+            if (!audioPlayer.src) {
+                setStatus("Please load a song first.");
+                return;
+            }
             audioPlayer.play().then(() => {
                 setStatus('Playing...');
                 document.getElementById('playBtn').textContent = '⏸️ Pause';
@@ -139,14 +202,17 @@
             audioPlayer.currentTime = 0;
         }
 
-        // --- Note Scheduler & Player (Web Audio API) ---
+        function resetScore() {
+            score = 0;
+            hitNotes.clear();
+            document.getElementById('scoreDisplay').textContent = 'Score: 0';
+        }
 
+        // --- Note Scheduler & Player (Web Audio API) ---
         function startScheduler() {
-            noteQueue = [...notes].sort((a, b) => a.start_time - b.start_time);
-            nextNoteTime = 0.0;
+            const noteQueue = [...notes].sort((a, b) => a.start_time - b.start_time);
             
-            // This is our high-resolution scheduler loop
-            animationFrame = setInterval(() => {
+            schedulerIntervalId = setInterval(() => {
                 const currentTime = audioPlayer.currentTime;
                 while (noteQueue.length > 0 && noteQueue[0].start_time < currentTime + NOTE_LOOKAHEAD_TIME) {
                     const note = noteQueue.shift();
@@ -156,60 +222,57 @@
         }
 
         function playNoteSound(note, scheduledTime) {
+            if (!audioContext) return;
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
-            
             osc.connect(gain);
             gain.connect(audioContext.destination);
 
             osc.type = 'triangle';
-            osc.frequency.value = 440 * Math.pow(2, (note.midi_note - 69) / 12);
+            osc.frequency.setValueAtTime(440 * Math.pow(2, (note.midi_note - 69) / 12), scheduledTime);
             
-            const volume = 0.3;
-            gain.gain.setValueAtTime(volume, scheduledTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, scheduledTime + note.duration);
+            const volume = 0.25;
+            gain.gain.setValueAtTime(0, scheduledTime);
+            gain.gain.linearRampToValueAtTime(volume, scheduledTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, scheduledTime + note.duration);
             
             osc.start(scheduledTime);
             osc.stop(scheduledTime + note.duration);
         }
 
         function stopSchedulerAndAnimation() {
-            if (animationFrame) {
-                clearInterval(animationFrame); // Use clearInterval for the scheduler
-                animationFrame = null;
-            }
+            if (schedulerIntervalId) clearInterval(schedulerIntervalId);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            schedulerIntervalId = null;
+            animationFrameId = null;
         }
 
         // --- Visual Animation Engine ---
-
         function startAnimation() {
             const noteTrack = document.getElementById('noteTrack');
             const displayWidth = window.innerWidth;
             const singLineX = displayWidth * 0.20;
-            const pixelsPerSecond = displayWidth * 0.2; // Note speed
+            const pixelsPerSecond = displayWidth * 0.15; // Faster notes
 
             const allMidiNotes = notes.map(n => n.midi_note);
             const minNote = Math.min(...allMidiNotes);
             const maxNote = Math.max(...allMidiNotes);
-            const noteRange = Math.max(maxNote - minNote, 24); // Min 2 octaves
+            const noteRange = Math.max(maxNote - minNote, 24);
 
             function animate() {
-                if (audioPlayer.paused) return; // Stop animation if paused
+                if (audioPlayer.paused) return;
 
                 const currentTime = audioPlayer.currentTime;
-                noteTrack.innerHTML = ''; // Efficiently redraw all visible notes
+                noteTrack.innerHTML = ''; 
 
-                notes.forEach(note => {
+                notes.forEach((note, index) => {
                     const noteStartTime = note.start_time;
                     const noteEndTime = noteStartTime + note.duration;
-
-                    // Conditions for rendering a note
-                    const isNoteActive = (noteStartTime < currentTime) && (noteEndTime > currentTime);
-                    const isNoteUpcoming = (noteStartTime >= currentTime) && (noteStartTime < currentTime + (displayWidth / pixelsPerSecond));
-
-                    if (isNoteActive || isNoteUpcoming) {
+                    const isNoteOnScreen = (noteEndTime > currentTime) && (noteStartTime < currentTime + (displayWidth / pixelsPerSecond));
+                    
+                    if (isNoteOnScreen) {
                         const noteElement = document.createElement('div');
-                        const topPercent = 100 - ((note.midi_note - minNote) / noteRange) * 100;
+                        const topPercent = 100 - ((note.midi_note - minNote) / noteRange) * 90 - 5;
                         const noteX = singLineX + (noteStartTime - currentTime) * pixelsPerSecond;
                         const noteWidth = note.duration * pixelsPerSecond;
                         
@@ -220,18 +283,97 @@
                         
                         const noteName = note.note_name.replace(/\d/, '');
                         noteElement.classList.add(noteColors[noteName] || 'note-c');
-                        if (isNoteActive) noteElement.classList.add('active');
-
+                        
+                        const isNoteActive = currentTime >= noteStartTime && currentTime < noteEndTime;
+                        if (isNoteActive) {
+                            noteElement.classList.add('active');
+                            if (!hitNotes.has(index)) {
+                                score += 10;
+                                hitNotes.add(index);
+                                document.getElementById('scoreDisplay').textContent = `Score: ${score}`;
+                                createParticles(singLineX, (topPercent / 100) * noteTrack.offsetHeight);
+                            }
+                        }
                         noteTrack.appendChild(noteElement);
                     }
                 });
                 
-                document.getElementById('progressInfo').textContent = 
-                    `${formatTime(currentTime)} / ${formatTime(audioPlayer.duration || 0)}`;
-
-                requestAnimationFrame(animate);
+                document.getElementById('progressInfo').textContent = `${formatTime(currentTime)} / ${formatTime(audioPlayer.duration || 0)}`;
+                animationFrameId = requestAnimationFrame(animate);
             }
             animate();
+        }
+
+        function createParticles(x, y) {
+            const particleContainer = document.querySelector('.pitch-display');
+            for (let i = 0; i < 15; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                particleContainer.appendChild(p);
+                p.style.left = `${x}px`;
+                p.style.top = `${y}px`;
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = 20 + Math.random() * 50;
+                const dx = Math.cos(angle) * velocity;
+                const dy = Math.sin(angle) * velocity;
+                p.style.width = `${2 + Math.random() * 2}px`;
+                p.style.height = p.style.width;
+
+                p.animate([
+                    { transform: `translate(0, 0)`, opacity: 1 },
+                    { transform: `translate(${dx}px, ${dy}px)`, opacity: 0 }
+                ], {
+                    duration: 500 + Math.random() * 500,
+                    easing: 'ease-out'
+                }).onfinish = () => p.remove();
+            }
+        }
+        
+        // --- Background Starfield ---
+        function runStarfield() {
+            const canvas = document.getElementById('star-bg');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            let stars = [];
+
+            for(let i = 0; i < 100; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.1,
+                    vx: Math.floor(Math.random() * 50) - 25,
+                    vy: Math.floor(Math.random() * 50) - 25
+                });
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = "lighter";
+                for(let i = 0, x = stars.length; i < x; i++) {
+                    let s = stars[i];
+                    ctx.fillStyle = "#fff";
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+
+            function update() {
+                for(let i = 0, x = stars.length; i < x; i++) {
+                    let s = stars[i];
+                    s.x += s.vx / 60;
+                    s.y += s.vy / 60;
+                    if(s.x < 0 || s.x > canvas.width) s.vx = -s.vx;
+                    if(s.y < 0 || s.y > canvas.height) s.vy = -s.vy;
+                }
+            }
+
+            (function tick() {
+                draw();
+                update();
+                requestAnimationFrame(tick);
+            })();
         }
         
         function formatTime(s) { return `${Math.floor(s/60)}`.padStart(2,'0') + ':' + `${Math.floor(s%60)}`.padStart(2,'0'); }
@@ -240,7 +382,10 @@
         // --- Event Listeners ---
         audioPlayer.addEventListener('ended', stopPlayback);
         audioPlayer.addEventListener('error', () => setStatus('Error loading audio file.'));
-        window.addEventListener('load', loadRandomSong);
+        window.addEventListener('load', () => {
+            loadRandomSong();
+            runStarfield();
+        });
     </script>
 </body>
 </html> 
