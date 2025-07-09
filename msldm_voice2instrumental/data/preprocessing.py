@@ -4,6 +4,7 @@ import librosa
 import numpy as np
 import crepe
 from typing import Tuple, Optional
+import scipy.signal
 
 class AudioPreprocessor:
     def __init__(self, config):
@@ -34,11 +35,14 @@ class AudioPreprocessor:
     
     def high_pass_filter(self, waveform: torch.Tensor, cutoff: float) -> torch.Tensor:
         """Apply high-pass filter"""
-        sos = librosa.filters.butter(6, cutoff, btype='high', fs=self.sample_rate)
+        from scipy.signal import butter, sosfilt
+        
+        sos = butter(6, cutoff, btype='high', fs=self.sample_rate, output='sos')
         filtered = torch.from_numpy(
-            librosa.filters.sosfilt(sos, waveform.numpy())
+            sosfilt(sos, waveform.numpy())
         ).float()
         return filtered
+
     
     def lufs_normalize(self, waveform: torch.Tensor, target_lufs: float) -> torch.Tensor:
         """Normalize to target LUFS (simplified implementation)"""

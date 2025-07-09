@@ -22,16 +22,16 @@ class VoiceInstrumentalDataset(Dataset):
         """Find matching vocal and instrumental files"""
         pairs = []
         
-        vocal_files = glob.glob(os.path.join(self.vocals_folder, "vocals_*.wav"))
+        vocal_files = glob.glob(os.path.join(self.vocals_folder, "voice_*.wav"))
         
         for vocal_file in vocal_files:
             # Extract base name
-            base_name = os.path.basename(vocal_file).replace("vocals_", "")
+            base_name = os.path.basename(vocal_file).replace("voice_", "")
             
             # Find corresponding instrumental file
             instrumental_file = os.path.join(
                 self.instruments_folder, 
-                f"instruments_{base_name}"
+                f"instrumental_{base_name}"
             )
             
             if os.path.exists(instrumental_file):

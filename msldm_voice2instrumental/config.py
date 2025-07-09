@@ -27,7 +27,7 @@ class ModelConfig:
     # Training parameters
     batch_size: int = 16
     learning_rate: float = 1e-4
-    num_epochs: int = 100
+    num_epochs: int = 1
     gradient_clip: float = 1.0
     
     # Data parameters
@@ -45,8 +45,8 @@ class ModelConfig:
 
 @dataclass
 class DataConfig:
-    vocals_folder: str = "vocals"
-    instruments_folder: str = "instruments"
+    vocals_folder: str = "voice"
+    instruments_folder: str = "instrumental"
     train_split: float = 0.8
     val_split: float = 0.1
     test_split: float = 0.1

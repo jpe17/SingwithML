@@ -248,9 +248,21 @@ class MSLDMTrainer:
 def main():
     model_config = ModelConfig()
     data_config = DataConfig(
-        vocals_folder='03_data_preprocessing/voice',  # Update with your path
-        instruments_folder='03_data_preprocessing/instrumental'  # Update with your path
+        vocals_folder='/Users/joaoesteves/mli/SingwithML/03_data_preprocessing/voice',      # ← Update this path
+        instruments_folder='/Users/joaoesteves/mli/SingwithML/03_data_preprocessing/instrumental'  # ← Update this path
     )
+    
+    # Quick fix: Add missing attributes to model_config
+    model_config.train_split = data_config.train_split
+    model_config.val_split = data_config.val_split
+    model_config.test_split = data_config.test_split
+    
+    # ADD THESE MISSING AUGMENTATION PARAMETERS
+    model_config.noise_prob = data_config.noise_prob
+    model_config.noise_snr_range = data_config.noise_snr_range
+    model_config.pitch_shift_range = data_config.pitch_shift_range
+    model_config.time_stretch_range = data_config.time_stretch_range
+    model_config.volume_range = data_config.volume_range
     
     trainer = MSLDMTrainer(model_config, data_config)
     trainer.train()
