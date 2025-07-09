@@ -25,7 +25,7 @@ class ModelConfig:
     unet_attention_levels: List[int] = None
     
     # Training parameters
-    batch_size: int = 16
+    batch_size: int = 4
     learning_rate: float = 1e-4
     num_epochs: int = 1
     gradient_clip: float = 1.0

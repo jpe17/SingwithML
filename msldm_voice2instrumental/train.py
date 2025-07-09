@@ -203,12 +203,31 @@ class MSLDMTrainer:
             'val_diffusion_loss': total_diffusion_loss / len(self.val_loader)
         }
     
-    def train(self):
-        """Main training loop"""
-        # Initialize wandb
+    def load_checkpoint(self, checkpoint_path):
+        """Load model from checkpoint"""
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        
+        # Load model states
+        self.vae.load_state_dict(checkpoint['vae_state_dict'])
+        self.diffusion.load_state_dict(checkpoint['diffusion_state_dict'])
+        
+        # Load optimizer states
+        self.vae_optimizer.load_state_dict(checkpoint['vae_optimizer'])
+        self.diffusion_optimizer.load_state_dict(checkpoint['diffusion_optimizer'])
+        
+        # Return epoch to resume from
+        return checkpoint['epoch']
+
+    def train(self, resume_from=None):
+        """Main training loop with resume capability"""
         wandb.init(project='msldm-voice2instrumental', config=self.model_config)
         
-        for epoch in range(self.model_config.num_epochs):
+        start_epoch = 0
+        if resume_from:
+            start_epoch = self.load_checkpoint(resume_from)
+            print(f"Resuming training from epoch {start_epoch}")
+        
+        for epoch in range(start_epoch, self.model_config.num_epochs):
             # Training
             self.vae.train()
             self.diffusion.train()
@@ -239,9 +258,7 @@ class MSLDMTrainer:
             self.vae_scheduler.step()
             self.diffusion_scheduler.step()
             
-            # Save checkpoint
-            if (epoch + 1) % 10 == 0:
-                self.save_checkpoint(epoch + 1)
+            self.save_checkpoint(epoch + 1)
     
     def save_checkpoint(self, epoch):
         """Save model checkpoint"""
