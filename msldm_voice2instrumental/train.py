@@ -23,7 +23,19 @@ class MSLDMTrainer:
         self.diffusion = LatentDiffusionModel(model_config)
         
         # Move to GPU
+        # Current device selection (around line 35)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        # Updated with MPS support
+        if torch.backends.mps.is_available():
+            self.device = torch.device('mps')
+        elif torch.cuda.is_available():
+            self.device = torch.device('cuda')
+        else:
+            self.device = torch.device('cpu')
+
+        print(f"Using device: {self.device}")
+
         self.vae.to(self.device)
         self.diffusion.to(self.device)
         

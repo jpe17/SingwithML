@@ -25,7 +25,14 @@ class MSLDMInference:
         self.diffusion.load_state_dict(checkpoint['diffusion_state_dict'])
         
         # Move to GPU
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if torch.backends.mps.is_available():
+            self.device = torch.device('mps')
+        elif torch.cuda.is_available():
+            self.device = torch.device('cuda')
+        else:
+            self.device = torch.device('cpu')
+
+        print(f"Inference using device: {self.device}")
         self.vae.to(self.device)
         self.diffusion.to(self.device)
         
