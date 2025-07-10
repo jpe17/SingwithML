@@ -11,6 +11,24 @@ class AudioPreprocessor:
         self.config = config
         self.sample_rate = config.sample_rate
         
+    def load_simple(self, audio_path: str) -> torch.Tensor:
+        """Simple audio loading - just load, resample, and convert to mono"""
+        waveform, sr = torchaudio.load(audio_path)
+        
+        # Resample if needed
+        if sr != self.sample_rate:
+            resampler = torchaudio.transforms.Resample(sr, self.sample_rate)
+            waveform = resampler(waveform)
+        
+        # Convert to mono
+        if waveform.shape[0] > 1:
+            waveform = torch.mean(waveform, dim=0, keepdim=True)
+        
+        # Simple normalization
+        waveform = waveform / (torch.max(torch.abs(waveform)) + 1e-8) * 0.8
+        
+        return waveform.squeeze(0)  # Return 1D tensor
+    
     def load_and_preprocess(self, audio_path: str, skip_preprocessing: bool = False) -> torch.Tensor:
         """Load and apply basic preprocessing"""
         # Load audio
@@ -66,7 +84,7 @@ class AudioPreprocessor:
         # Clear TensorFlow memory before processing
         tf.keras.backend.clear_session()
         
-        audio_np = waveform.squeeze().numpy()
+        audio_np = waveform.squeeze().cpu().numpy()
         
         try:
             # CREPE pitch extraction
@@ -139,7 +157,7 @@ class AudioPreprocessor:
         waveform = self.load_and_preprocess(audio_path)
         
         # Convert to numpy for simple processing
-        audio_np = waveform.squeeze().numpy()
+        audio_np = waveform.squeeze().cpu().numpy()
         
         # 1. Simple noise gate - just reduce quiet parts
         audio_np = self._simple_noise_gate(audio_np, threshold=-0.02)

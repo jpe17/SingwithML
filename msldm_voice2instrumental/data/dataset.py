@@ -14,9 +14,11 @@ class VoiceInstrumentalDataset(Dataset):
         
         # Find matching pairs
         self.pairs = self._find_pairs()
+        print(f"Found {len(self.pairs)} pairs for {split}")
         
         # Split data
         self.pairs = self._split_data()
+        print(f"Using {len(self.pairs)} pairs for {split} split")
         
     def _find_pairs(self):
         """Find matching vocal and instrumental files"""
@@ -42,8 +44,8 @@ class VoiceInstrumentalDataset(Dataset):
     def _split_data(self):
         """Split data into train/val/test"""
         total_len = len(self.pairs)
-        train_len = int(total_len * self.config.train_split)
-        val_len = int(total_len * self.config.val_split)
+        train_len = int(total_len * 0.8)  # Use hardcoded values for simplicity
+        val_len = int(total_len * 0.1)
         
         if self.split == 'train':
             return self.pairs[:train_len]
@@ -58,42 +60,30 @@ class VoiceInstrumentalDataset(Dataset):
     def __getitem__(self, idx):
         vocal_path, instrumental_path = self.pairs[idx]
         
-        print(f"Processing file {idx+1}/{len(self.pairs)}: {os.path.basename(vocal_path)}")
+        # Load and preprocess audio - simple version
+        vocal = self.preprocessor.load_simple(vocal_path)
+        instrumental = self.preprocessor.load_simple(instrumental_path)
         
-        # Load and preprocess audio
-        print("  Loading vocal...")
-        vocal = self.preprocessor.load_and_preprocess(vocal_path)
-        print("  Loading instrumental...")
-        instrumental = self.preprocessor.load_and_preprocess(instrumental_path)
-        
-        # Apply augmentations during training
-        if self.split == 'train':
-            print("  Applying augmentations...")
-            vocal = self.preprocessor.apply_augmentations(vocal)
-            instrumental = self.preprocessor.apply_augmentations(instrumental)
-        
-        # Segment audio
-        print("  Segmenting audio...")
+        # Segment audio to same length
         vocal, instrumental = self._segment_audio(vocal, instrumental)
         
-        # Extract CREPE features
-        print("  Extracting CREPE features...")
-        pitch_features = self.preprocessor.extract_crepe_features(vocal)
-        print("  Done!")
+        # Make sure they're the right shape
+        if vocal.dim() == 1:
+            vocal = vocal.unsqueeze(0)
+        if instrumental.dim() == 1:
+            instrumental = instrumental.unsqueeze(0)
         
         return {
             'vocal': vocal,
             'instrumental': instrumental,
-            'pitch_features': pitch_features
         }
 
-    
     def _segment_audio(self, vocal, instrumental):
         """Segment audio to fixed length"""
         min_len = min(vocal.shape[-1], instrumental.shape[-1])
         
         if min_len > self.config.segment_length:
-            # Random crop during training
+            # Random crop during training, fixed crop for validation
             if self.split == 'train':
                 start = torch.randint(0, min_len - self.config.segment_length, (1,)).item()
             else:

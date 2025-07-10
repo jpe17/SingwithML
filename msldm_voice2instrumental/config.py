@@ -1,59 +1,39 @@
-from dataclasses import dataclass
-from typing import List, Optional
-
-@dataclass
+# config.py
 class ModelConfig:
-    # Audio parameters
-    sample_rate: int = 44100
-    n_fft: int = 2048
-    hop_length: int = 512
-    win_length: int = 2048
-    
-    # VAE parameters
-    vae_latent_dim: int = 80
-    vae_channels: List[int] = None
-    vae_strides: List[int] = None
-    
-    # Diffusion parameters
-    diffusion_steps: int = 1000
-    inference_steps: int = 50
-    beta_start: float = 0.0001
-    beta_end: float = 0.02
-    
-    # U-Net parameters
-    unet_channels: List[int] = None
-    unet_attention_levels: List[int] = None
-    
-    # Training parameters
-    batch_size: int = 4
-    learning_rate: float = 1e-4
-    num_epochs: int = 1
-    gradient_clip: float = 1.0
-    
-    # Data parameters
-    segment_length: int = 131072  # ~3 seconds at 44.1kHz
-    
-    def __post_init__(self):
-        if self.vae_channels is None:
-            self.vae_channels = [64, 128, 256, 512]
-        if self.vae_strides is None:
-            self.vae_strides = [2, 2, 2, 2]
-        if self.unet_channels is None:
-            self.unet_channels = [128, 256, 512, 1024]
-        if self.unet_attention_levels is None:
-            self.unet_attention_levels = [1, 2, 3]
+    def __init__(self):
+        # Audio settings
+        self.sample_rate = 22050
+        self.segment_length = 65536  # ~3 seconds at 22050 Hz
+        
+        # VAE Architecture
+        self.vae_channels = [64, 128, 256, 512]
+        self.vae_strides = [2, 4, 4, 4]
+        self.vae_latent_dim = 128
+        
+        # Diffusion settings
+        self.diffusion_steps = 1000
+        self.inference_steps = 50
+        self.beta_start = 0.0001
+        self.beta_end = 0.02
+        
+        # U-Net channels
+        self.unet_channels = [128, 256, 512, 1024]
+        
+        # Training settings
+        self.batch_size = 8  # Reduced for memory efficiency
+        self.learning_rate = 1e-4
+        self.num_epochs = 100
+        self.gradient_clip = 1.0
+        
+        # Audio preprocessing
+        self.hop_length = 256
+        self.noise_prob = 0.3
+        self.noise_snr_range = (0.01, 0.05)
+        self.pitch_shift_range = (-2, 2)
+        self.time_stretch_range = (0.95, 1.05)
+        self.volume_range = (-5, 5)
 
-@dataclass
 class DataConfig:
-    vocals_folder: str = "voice"
-    instruments_folder: str = "instrumental"
-    train_split: float = 0.8
-    val_split: float = 0.1
-    test_split: float = 0.1
-    
-    # Augmentation parameters
-    noise_prob: float = 0.3
-    noise_snr_range: tuple = (0.1, 0.3)
-    pitch_shift_range: tuple = (-2, 2)
-    time_stretch_range: tuple = (0.8, 1.2)
-    volume_range: tuple = (-6, 6)
+    def __init__(self, vocals_folder, instruments_folder):
+        self.vocals_folder = vocals_folder
+        self.instruments_folder = instruments_folder

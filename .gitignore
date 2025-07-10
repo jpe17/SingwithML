@@ -4,7 +4,10 @@
 03_data_preprocessing/instrumental
 03_data_preprocessing/voice
 04_extracted_notes
-05_add_noise
+05_post_processing
 venv
 .python-version
 wandb
+msldm_voice2instrumental
+checkpoints
+output

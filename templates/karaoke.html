@@ -547,50 +547,67 @@
         function playNoteSound(note, scheduledTime) {
             if (!audioContext) return;
             
-            // Create a richer sound with multiple oscillators
+            // FIXED: Accurate pitch calculation using standard A4 = 440Hz (MIDI note 69)
+            // Formula: frequency = 440 * 2^((midi_note - 69) / 12)
             const fundamentalFreq = 440 * Math.pow(2, (note.midi_note - 69) / 12);
             
+            // --- LOUDER and LONGER sound parameters ---
+            const mainVolume = 0.35; // Increased from 0.2
+            const harmonicVolume = 0.15; // Increased from 0.1
+            const releaseTime = 0.5; // Added release time to make sound longer
+            const stopTime = scheduledTime + note.duration + releaseTime;
+
+            // --- Vibrato for a less "computerized" feel ---
+            const vibrato = audioContext.createOscillator();
+            vibrato.frequency.setValueAtTime(5, scheduledTime); // Vibrato speed in Hz
+            const vibratoGain = audioContext.createGain();
+            vibratoGain.gain.setValueAtTime(10, scheduledTime); // Vibrato depth in cents
+            vibrato.connect(vibratoGain);
+
             // Main oscillator
             const osc1 = audioContext.createOscillator();
             const gain1 = audioContext.createGain();
             
-            // Harmonic oscillator
+            // Harmonic oscillator (perfect octave = exactly 2x frequency)
             const osc2 = audioContext.createOscillator();
             const gain2 = audioContext.createGain();
             
-            // Connect oscillators
+            // Connect nodes
+            vibratoGain.connect(osc1.detune);
+            vibratoGain.connect(osc2.detune);
             osc1.connect(gain1);
             osc2.connect(gain2);
             gain1.connect(audioContext.destination);
             gain2.connect(audioContext.destination);
 
-            // Configure main oscillator
+            // Configure main oscillator with exact frequency
             osc1.type = 'triangle';
             osc1.frequency.setValueAtTime(fundamentalFreq, scheduledTime);
             
-            // Configure harmonic oscillator (octave higher, quieter)
+            // Configure harmonic oscillator (perfect octave higher)
             osc2.type = 'sine';
             osc2.frequency.setValueAtTime(fundamentalFreq * 2, scheduledTime);
             
-            // Volume envelopes
-            const mainVolume = 0.2;
-            const harmonicVolume = 0.1;
-            
+            // --- Volume envelopes with release ---
             // Main oscillator envelope
             gain1.gain.setValueAtTime(0, scheduledTime);
-            gain1.gain.linearRampToValueAtTime(mainVolume, scheduledTime + 0.05);
-            gain1.gain.exponentialRampToValueAtTime(0.001, scheduledTime + note.duration);
+            gain1.gain.linearRampToValueAtTime(mainVolume, scheduledTime + 0.05); // Attack
+            gain1.gain.setValueAtTime(mainVolume, scheduledTime + note.duration); // Sustain
+            gain1.gain.linearRampToValueAtTime(0.0001, stopTime); // Release
             
             // Harmonic oscillator envelope
             gain2.gain.setValueAtTime(0, scheduledTime);
-            gain2.gain.linearRampToValueAtTime(harmonicVolume, scheduledTime + 0.05);
-            gain2.gain.exponentialRampToValueAtTime(0.001, scheduledTime + note.duration);
+            gain2.gain.linearRampToValueAtTime(harmonicVolume, scheduledTime + 0.05); // Attack
+            gain2.gain.setValueAtTime(harmonicVolume, scheduledTime + note.duration); // Sustain
+            gain2.gain.linearRampToValueAtTime(0.0001, stopTime); // Release
             
             // Start and stop oscillators
+            vibrato.start(scheduledTime);
+            vibrato.stop(stopTime);
             osc1.start(scheduledTime);
-            osc1.stop(scheduledTime + note.duration);
+            osc1.stop(stopTime);
             osc2.start(scheduledTime);
-            osc2.stop(scheduledTime + note.duration);
+            osc2.stop(stopTime);
         }
 
         function stopSchedulerAndAnimation() {
@@ -610,7 +627,18 @@
             const allMidiNotes = notes.map(n => n.midi_note);
             const minNote = Math.min(...allMidiNotes);
             const maxNote = Math.max(...allMidiNotes);
-            const noteRange = Math.max(maxNote - minNote, 24);
+            
+            // Add padding of 2 semitones above and below, with minimum range of 2 octaves (24 semitones)
+            const padding = 2;
+            const minDisplayNote = minNote - padding;
+            const maxDisplayNote = maxNote + padding;
+            const displayRange = Math.max(maxDisplayNote - minDisplayNote, 24); // Minimum 2 octaves
+            
+            // Center the range if we expanded it
+            const actualRange = maxDisplayNote - minDisplayNote;
+            const extraSemitones = displayRange - actualRange;
+            const finalMinNote = minDisplayNote - Math.floor(extraSemitones / 2);
+            const finalMaxNote = finalMinNote + displayRange;
 
             function animate() {
                 if (audioPlayer.paused) return;
@@ -625,7 +653,12 @@
                     
                     if (isNoteOnScreen) {
                         const noteElement = document.createElement('div');
-                        const topPercent = 100 - ((note.midi_note - minNote) / noteRange) * 85 - 7.5;
+                        
+                        // FIXED: Proper semitone interval calculation
+                        // Each semitone gets equal visual space
+                        const semitoneFromBottom = note.midi_note - finalMinNote;
+                        const topPercent = 100 - (semitoneFromBottom / displayRange) * 85 - 7.5;
+                        
                         const noteX = singLineX + (noteStartTime - currentTime) * pixelsPerSecond;
                         const noteWidth = Math.max(note.duration * pixelsPerSecond, 30); // Minimum width
                         

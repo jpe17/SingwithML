@@ -17,7 +17,7 @@ from tqdm import tqdm
 # Configuration
 INPUT_ROOT = "01_demucs"
 OUTPUT_ROOT = "02_data_augment"
-AUG_PER_FILE = 1  # Changed from 1000 to 1
+AUG_PER_FILE = 30 # Changed from 1000 to 1
 
 # Augmentation parameters
 PITCH_SEMITONE_RANGE = (-2.0, 2.0)      # ±2 semitones
