@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-wav_to_csv_crepe.py - With progress indicators and optimization
+wav_to_csv_crepe.py - Fixed version with proper synchronization
 """
 import os
 import glob
@@ -16,15 +16,19 @@ import time
 CREPE_SAMPLE_RATE = 16000
 
 def wav_to_events(wav_path, confidence_threshold=0.8, min_note_duration=0.1):
-    """Extract pitch with progress indicators"""
+    """Extract pitch with progress indicators and proper timing"""
     
     print(f"Loading audio file: {wav_path}")
     start_time = time.time()
     
-    # Load audio and resample to what CREPE expects
+    # Load audio - get original sample rate for reference
+    audio_original, sr_original = librosa.load(wav_path, sr=None)
+    print(f"Original audio: {len(audio_original) / sr_original:.2f} seconds, sample rate: {sr_original}")
+    
+    # Resample to CREPE's expected rate
     audio, sr = librosa.load(wav_path, sr=CREPE_SAMPLE_RATE)
     duration = len(audio) / sr
-    print(f"Audio loaded: {duration:.2f} seconds, sample rate: {sr}")
+    print(f"Resampled audio: {duration:.2f} seconds, sample rate: {sr}")
     
     # Run CREPE with only supported parameters
     print("Running CREPE pitch detection...")
@@ -52,58 +56,84 @@ def wav_to_events(wav_path, confidence_threshold=0.8, min_note_duration=0.1):
     midi_notes = librosa.hz_to_midi(frequency)
     midi_notes = np.round(midi_notes).astype(int)
     
-    # Group into note events
+    # Group into note events with proper timing
     print("Grouping into note events...")
-    events = group_notes(time_stamps, midi_notes, min_note_duration)
+    events = group_notes_fixed(time_stamps, midi_notes, min_note_duration)
     
     print(f"Generated {len(events)} note events")
     return events
 
-def group_notes(time_stamps, midi_notes, min_note_duration):
-    """Group consecutive similar notes into events"""
+def group_notes_fixed(time_stamps, midi_notes, min_note_duration):
+    """Group consecutive similar notes into events with proper timing calculations"""
     events = []
     if len(midi_notes) == 0:
         return events
     
     current_note = midi_notes[0]
     start_time = time_stamps[0]
+    last_time = time_stamps[0]
     
-    print("Grouping consecutive notes...")
+    # CREPE uses 10ms hop size
+    hop_size_seconds = 0.01
+    
+    print("Grouping consecutive notes with fixed timing...")
     for i in range(1, len(midi_notes)):
-        # Check if note changed (allow 1 semitone tolerance)
-        if abs(midi_notes[i] - current_note) > 1 or (time_stamps[i] - time_stamps[i-1]) > 0.1:
-            # End current note
-            duration = time_stamps[i-1] - start_time
+        current_time = time_stamps[i]
+        
+        # Check if note changed (allow 1 semitone tolerance) OR if there's a significant gap
+        note_changed = abs(midi_notes[i] - current_note) > 1
+        # More reasonable gap threshold - allow for brief silences within a note
+        time_gap = (current_time - last_time) > 0.2  # 200ms gap threshold
+        
+        if note_changed or time_gap:
+            # End current note - use proper duration calculation
+            # Add hop size to account for frame duration
+            duration = last_time - start_time + hop_size_seconds
+            
             if duration >= min_note_duration:
                 events.append((start_time, duration, current_note))
             
             # Start new note
             current_note = midi_notes[i]
-            start_time = time_stamps[i]
+            start_time = current_time
+        
+        last_time = current_time
     
-    # Add final note
-    duration = time_stamps[-1] - start_time
+    # Add final note with proper duration
+    duration = last_time - start_time + hop_size_seconds
     if duration >= min_note_duration:
         events.append((start_time, duration, current_note))
     
     return events
 
 def write_csv(events, csv_path):
-    """Write events to CSV file"""
+    """Write events to CSV file with high precision timestamps"""
     print(f"Writing {len(events)} events to {csv_path}")
     with open(csv_path, 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(['start_time_sec', 'duration_sec', 'midi_note'])
         for start_time, duration, note in events:
+            # Use high precision for timing
             writer.writerow([f"{start_time:.6f}", f"{duration:.6f}", note])
+
+def validate_timing(events, duration):
+    """Validate that events don't exceed audio duration"""
+    if not events:
+        return True
+    
+    max_end_time = max(event[0] + event[1] for event in events)
+    if max_end_time > duration * 1.1:  # Allow 10% tolerance
+        print(f"⚠️  Warning: Some notes extend beyond audio duration ({max_end_time:.2f}s > {duration:.2f}s)")
+        return False
+    return True
 
 def main():
     input_dir = '03_data_preprocessing/voice'
-    output_dir = '04_extracted_notes'
+    output_dir = '05_humanise_notes'
 
-    # Parameters
-    confidence_threshold = 0.8
-    min_note_duration = 0.1
+    # Parameters - made more conservative for better sync
+    confidence_threshold = 0.85  # Slightly higher for better quality
+    min_note_duration = 0.05     # Shorter minimum for better note capture
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -127,8 +157,18 @@ def main():
             events = wav_to_events(wav_path, confidence_threshold, min_note_duration)
 
             if events:
-                write_csv(events, output_csv_path)
-                print(f"✓ Successfully extracted {len(events)} vocal notes to {output_csv_path}")
+                # Get audio duration for validation
+                audio_duration = librosa.get_duration(path=wav_path)
+                
+                if validate_timing(events, audio_duration):
+                    write_csv(events, output_csv_path)
+                    print(f"✓ Successfully extracted {len(events)} vocal notes to {output_csv_path}")
+                    
+                    # Print timing statistics
+                    total_note_time = sum(event[1] for event in events)
+                    print(f"  Total note time: {total_note_time:.2f}s / {audio_duration:.2f}s ({total_note_time/audio_duration*100:.1f}%)")
+                else:
+                    print(f"⚠️  Timing validation failed for {wav_path}")
             else:
                 print(f"No notes extracted from {wav_path} with current settings.")
 

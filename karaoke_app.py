@@ -22,7 +22,7 @@ def api_random_song():
     Finds a random song and returns its metadata and a URL to the instrumental audio.
     This endpoint is now extremely fast as it does no audio processing.
     """
-    notes_dir = Path("04_extracted_notes")
+    notes_dir = Path("05_humanise_notes")
     
     if not notes_dir.exists() or not INSTRUMENTAL_DIR.exists():
         return jsonify({"error": "Data directories not found on the server."}), 500

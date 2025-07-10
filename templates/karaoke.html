@@ -547,67 +547,59 @@
         function playNoteSound(note, scheduledTime) {
             if (!audioContext) return;
             
-            // FIXED: Accurate pitch calculation using standard A4 = 440Hz (MIDI note 69)
-            // Formula: frequency = 440 * 2^((midi_note - 69) / 12)
-            const fundamentalFreq = 440 * Math.pow(2, (note.midi_note - 69) / 12);
+            // Calculate frequency from MIDI note
+            const frequency = 440 * Math.pow(2, (note.midi_note - 69) / 12);
             
-            // --- LOUDER and LONGER sound parameters ---
-            const mainVolume = 0.35; // Increased from 0.2
-            const harmonicVolume = 0.15; // Increased from 0.1
-            const releaseTime = 0.5; // Added release time to make sound longer
+            // Simple, clean piano-like sound
+            const volume = 0.7; // Increased volume for better audibility
+            const attackTime = 0.02; // Quick but smooth attack
+            const decayTime = Math.min(note.duration * 0.6, 1.5); // Natural decay
+            const sustainLevel = 0.3; // Piano sustain level
+            const releaseTime = 0.5; // Gentle release
             const stopTime = scheduledTime + note.duration + releaseTime;
 
-            // --- Vibrato for a less "computerized" feel ---
-            const vibrato = audioContext.createOscillator();
-            vibrato.frequency.setValueAtTime(5, scheduledTime); // Vibrato speed in Hz
-            const vibratoGain = audioContext.createGain();
-            vibratoGain.gain.setValueAtTime(10, scheduledTime); // Vibrato depth in cents
-            vibrato.connect(vibratoGain);
+            // Create master gain for the note
+            const masterGain = audioContext.createGain();
+            masterGain.connect(audioContext.destination);
 
-            // Main oscillator
-            const osc1 = audioContext.createOscillator();
-            const gain1 = audioContext.createGain();
-            
-            // Harmonic oscillator (perfect octave = exactly 2x frequency)
-            const osc2 = audioContext.createOscillator();
-            const gain2 = audioContext.createGain();
-            
-            // Connect nodes
-            vibratoGain.connect(osc1.detune);
-            vibratoGain.connect(osc2.detune);
-            osc1.connect(gain1);
-            osc2.connect(gain2);
-            gain1.connect(audioContext.destination);
-            gain2.connect(audioContext.destination);
+            // Use only 3 simple harmonics for clean sound
+            const harmonics = [
+                { ratio: 1.0, amplitude: 1.0 },    // Fundamental frequency
+                { ratio: 2.0, amplitude: 0.4 },    // Octave (adds brightness)
+                { ratio: 3.0, amplitude: 0.2 }     // Perfect fifth (adds warmth)
+            ];
 
-            // Configure main oscillator with exact frequency
-            osc1.type = 'triangle';
-            osc1.frequency.setValueAtTime(fundamentalFreq, scheduledTime);
+            harmonics.forEach(harmonic => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                // Use only sine waves for pure, clean tones
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(frequency * harmonic.ratio, scheduledTime);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(masterGain);
+                
+                // Clean ADSR envelope
+                const harmonicVolume = volume * harmonic.amplitude;
+                gainNode.gain.setValueAtTime(0, scheduledTime);
+                gainNode.gain.linearRampToValueAtTime(harmonicVolume, scheduledTime + attackTime);
+                gainNode.gain.exponentialRampToValueAtTime(harmonicVolume * sustainLevel, scheduledTime + attackTime + decayTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, stopTime);
+                
+                oscillator.start(scheduledTime);
+                oscillator.stop(stopTime);
+            });
+
+            // Optional: Add subtle low-pass filter for warmth
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(frequency * 4, scheduledTime); // Gentle filtering
+            filter.Q.setValueAtTime(1, scheduledTime);
             
-            // Configure harmonic oscillator (perfect octave higher)
-            osc2.type = 'sine';
-            osc2.frequency.setValueAtTime(fundamentalFreq * 2, scheduledTime);
-            
-            // --- Volume envelopes with release ---
-            // Main oscillator envelope
-            gain1.gain.setValueAtTime(0, scheduledTime);
-            gain1.gain.linearRampToValueAtTime(mainVolume, scheduledTime + 0.05); // Attack
-            gain1.gain.setValueAtTime(mainVolume, scheduledTime + note.duration); // Sustain
-            gain1.gain.linearRampToValueAtTime(0.0001, stopTime); // Release
-            
-            // Harmonic oscillator envelope
-            gain2.gain.setValueAtTime(0, scheduledTime);
-            gain2.gain.linearRampToValueAtTime(harmonicVolume, scheduledTime + 0.05); // Attack
-            gain2.gain.setValueAtTime(harmonicVolume, scheduledTime + note.duration); // Sustain
-            gain2.gain.linearRampToValueAtTime(0.0001, stopTime); // Release
-            
-            // Start and stop oscillators
-            vibrato.start(scheduledTime);
-            vibrato.stop(stopTime);
-            osc1.start(scheduledTime);
-            osc1.stop(stopTime);
-            osc2.start(scheduledTime);
-            osc2.stop(stopTime);
+            masterGain.disconnect();
+            masterGain.connect(filter);
+            filter.connect(audioContext.destination);
         }
 
         function stopSchedulerAndAnimation() {
