@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VocalSeparate AI - Voice to Instrumental Diffusion</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-waveform-lines"></i>
+                    <span>VocalSeparate AI</span>
+                </div>
+            </div>
+            
+            <div class="nav-menu">
+                <div class="nav-item active" data-section="demo">
+                    <i class="fas fa-play-circle"></i>
+                    <span>Demo Examples</span>
+                </div>
+                <div class="nav-item" data-section="upload">
+                    <i class="fas fa-upload"></i>
+                    <span>Try Your Own</span>
+                </div>
+                <div class="nav-item" data-section="about">
+                    <i class="fas fa-info-circle"></i>
+                    <span>How It Works</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <h1>Voice-to-Instrumental Diffusion Model</h1>
+                <p class="subtitle">Transform vocals into instrumental tracks using AI diffusion</p>
+            </header>
+
+            <!-- Demo Examples Section -->
+            <section id="demo-section" class="content-section active">
+                <div class="section-header">
+                    <h2>Demo Examples</h2>
+                    <p class="section-subtitle">See what perfect separation looks like vs. our "learning" model 😅</p>
+                </div>
+
+                <div class="demo-grid">
+                    {% for example in examples %}
+                    <div class="demo-card" data-demo-id="{{ example.id }}">
+                        <div class="demo-card-header">
+                            <div class="track-info">
+                                <h3>{{ example.title }}</h3>
+                                <p class="artist">{{ example.artist }}</p>
+                                <div class="track-meta">
+                                    <span class="genre">{{ example.genre }}</span>
+                                    <span class="year">{{ example.year }}</span>
+                                    <span class="duration">{{ example.duration }}</span>
+                                </div>
+                            </div>
+                            <div class="play-button" data-demo-id="{{ example.id }}">
+                                <i class="fas fa-play"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="demo-content">
+                            <div class="audio-comparison">
+                                <div class="audio-track">
+                                    <h4>
+                                        <div class="left">
+                                            <i class="fas fa-music"></i>
+                                            Original Song
+                                        </div>
+                                        <span class="badge original">Full Track</span>
+                                    </h4>
+                                    <div class="audio-player">
+                                        <audio controls preload="metadata">
+                                            <source src="{{ url_for('static', filename=example.original_file.replace('static/', '')) }}" type="audio/mp3">
+                                        </audio>
+                                    </div>
+                                </div>
+                                
+                                <div class="audio-track">
+                                    <h4>
+                                        <div class="left">
+                                            <i class="fas fa-microphone"></i>
+                                            Extracted Vocal
+                                        </div>
+                                        <span class="badge extracted">Demucs</span>
+                                    </h4>
+                                    <div class="audio-player">
+                                        <audio controls preload="metadata">
+                                            <source src="{{ url_for('serve_audio', filename=example.vocal_file) }}" type="audio/wav">
+                                        </audio>
+                                    </div>
+                                </div>
+                                
+                                <div class="audio-track reference">
+                                    <h4>
+                                        <div class="left">
+                                            <i class="fas fa-guitar"></i>
+                                            Reference Instrumental
+                                        </div>
+                                        <span class="badge perfect">Perfect</span>
+                                    </h4>
+                                    <div class="audio-player">
+                                        <audio controls preload="metadata">
+                                            <source src="{{ url_for('serve_audio', filename=example.reference_instrumental) }}" type="audio/wav">
+                                        </audio>
+                                    </div>
+                                </div>
+                                
+                                <div class="audio-track generated">
+                                    <h4>
+                                        <div class="left">
+                                            <i class="fas fa-robot"></i>
+                                            Our AI Model
+                                        </div>
+                                        <span class="badge learning">Still Learning</span>
+                                    </h4>
+                                    <div class="diffusion-demo">
+                                        <button class="generate-btn" data-demo-id="{{ example.id }}">
+                                            <i class="fas fa-magic"></i>
+                                            Generate with Diffusion
+                                        </button>
+                                        <div class="diffusion-progress" style="display: none;">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill"></div>
+                                            </div>
+                                            <div class="progress-text">Initializing...</div>
+                                        </div>
+                                        <div class="generated-audio" style="display: none;">
+                                            <audio controls>
+                                                <source src="" type="audio/wav">
+                                            </audio>
+                                            <p class="disclaimer">🎭 AI model output (stable demo - pre-saved)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Upload Section -->
+            <section id="upload-section" class="content-section">
+                <div class="section-header">
+                    <h2>Try Your Own Audio</h2>
+                    <p class="section-subtitle">Upload a vocal track and see our diffusion model in action</p>
+                </div>
+
+                <div class="upload-container">
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h3>Drop your audio file here</h3>
+                        <p>or click to browse</p>
+                        <input type="file" id="audio-upload" accept="audio/*" style="display: none;">
+                        <div class="file-info">
+                            <p>Supported formats: MP3, WAV, FLAC</p>
+                            <p>Max file size: 50MB</p>
+                        </div>
+                    </div>
+
+                    <div class="upload-result" id="upload-result" style="display: none;">
+                        <div class="uploaded-file">
+                            <h4>Uploaded File</h4>
+                            <div class="file-details">
+                                <span class="filename"></span>
+                                <span class="filesize"></span>
+                            </div>
+                            <audio controls>
+                                <source src="" type="audio/wav">
+                            </audio>
+                        </div>
+
+                        <div class="diffusion-process">
+                            <button class="process-btn" id="process-btn">
+                                <i class="fas fa-magic"></i>
+                                Generate Instrumental
+                            </button>
+                            
+                            <div class="process-progress" id="process-progress" style="display: none;">
+                                <div class="progress-header">
+                                    <h4>🧠 AI Diffusion in Progress</h4>
+                                    <span class="eta"></span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill"></div>
+                                </div>
+                                <div class="progress-steps">
+                                    <div class="step-text"></div>
+                                </div>
+                                <div class="diffusion-visualization">
+                                    <div class="noise-particles"></div>
+                                </div>
+                            </div>
+
+                            <div class="process-result" id="process-result" style="display: none;">
+                                <h4>Generated Instrumental</h4>
+                                <audio controls>
+                                    <source src="" type="audio/wav">
+                                </audio>
+                                <div class="result-actions">
+                                    <button class="download-btn">
+                                        <i class="fas fa-download"></i>
+                                        Download
+                                    </button>
+                                    <button class="regenerate-btn">
+                                        <i class="fas fa-redo"></i>
+                                        Try Again
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- About Section -->
+            <section id="about-section" class="content-section">
+                <div class="section-header">
+                    <h2>How It Works</h2>
+                    <p class="section-subtitle">The science behind voice-to-instrumental diffusion</p>
+                </div>
+
+                <div class="about-content">
+                    <div class="process-flow">
+                        <div class="process-step">
+                            <div class="step-icon">
+                                <i class="fas fa-microphone"></i>
+                            </div>
+                            <h3>1. Vocal Input</h3>
+                            <p>Upload or select a vocal track that you want to convert to instrumental</p>
+                        </div>
+
+                        <div class="process-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="step-icon">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <h3>2. VAE Encoding</h3>
+                            <p>The vocal is encoded into a latent representation using a Variational Autoencoder</p>
+                        </div>
+
+                        <div class="process-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="step-icon">
+                                <i class="fas fa-magic"></i>
+                            </div>
+                            <h3>3. Diffusion Process</h3>
+                            <p>A diffusion model generates instrumental features conditioned on the vocal latent</p>
+                        </div>
+
+                        <div class="process-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="step-icon">
+                                <i class="fas fa-guitar"></i>
+                            </div>
+                            <h3>4. Audio Generation</h3>
+                            <p>The latent representation is decoded back to audio, producing the instrumental track</p>
+                        </div>
+                    </div>
+
+                    <div class="tech-details">
+                        <h3>Technical Details</h3>
+                        <div class="tech-grid">
+                            <div class="tech-item">
+                                <h4>Model Architecture</h4>
+                                <p>VAE + DDPM Diffusion Model with vocal conditioning</p>
+                            </div>
+                            <div class="tech-item">
+                                <h4>Training Data</h4>
+                                <p>Paired vocal-instrumental tracks from various musical genres</p>
+                            </div>
+                            <div class="tech-item">
+                                <h4>Diffusion Steps</h4>
+                                <p>50 denoising steps during inference for quality generation</p>
+                            </div>
+                            <div class="tech-item">
+                                <h4>Audio Processing</h4>
+                                <p>22kHz sample rate, 16-bit depth, mono channel processing</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="disclaimer-box">
+                        <h4>🎭 Fair Warning</h4>
+                        <p>This model is still in early development. Results may range from "surprisingly decent" to "abstract art in audio form". We're working on it! 😅</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html> 
